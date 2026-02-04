@@ -1,0 +1,49 @@
+# Notes:
+# api1 will fail the first time, but can still be started manually in Docker Desktop
+# Still need to figure out why the first run fails, but otherwise it still works as intended
+services:
+  # api1 is the schema owner and will initialize the database schema
+  # api2 connects to the same database but does not attempt to create the schema
+  api1:
+    build: .
+    container_name: api1
+    environment:
+      - DB_URL=postgresql://user:password@db/retro_games
+      - SCHEMA_OWNER=true
+    depends_on:
+      - db
+
+  api2:
+    build: .
+    container_name: api2
+    environment:
+      - DB_URL=postgresql://user:password@db/retro_games
+      - SCHEMA_OWNER=false
+    depends_on:
+      - db
+
+  # Nginx load balancer
+  web:
+    image: nginx:latest
+    container_name: nginx_lb
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api1
+      - api2
+
+  # PostgreSQL Database
+  db:
+    image: postgres:16
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: retro_games
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

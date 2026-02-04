@@ -42,8 +42,12 @@ L1_Retro_Video_Game/
 ├── auth.py              # Simple ownership/authentication helper
 ├── routes/
 │   ├── users.py         # User API endpoints
-│   └── games.py         # Game API endpoints
+│   ├── offers.py        # Offers API endpoints
+|   └── games.py         # Game API endpoints
 ├── requirements.txt     # Python dependencies used for this project
+├── docker-compose.yml   # Contains the both APIs, NGINX, and Database containers
+├── Dockerfile           # Dockerfile containing the instructions to pip install what's inside requirements.txt
+├── nginx.conf           # Configurations for the NGINX container
 └── README.md
 ```
 
@@ -88,14 +92,13 @@ pip install -r requirements.txt
 python app.py
 ```
 
-The API will be available at:
+The APIs will be available at thanks to NGINX:
 
 ```
-http://localhost:5000/
+http://localhost/
 ```
 
-Swagger (OpenAPI) documentation is accessible via the root URL.
-
+Removed Swagger Contents
 ---
 
 ## API Overview
@@ -105,7 +108,7 @@ Swagger (OpenAPI) documentation is accessible via the root URL.
 * `POST /users` – Create a new user
 * `GET /users/{id}` – Retrieve user details
 * `PUT /users/{id}` – Update user name and address (email immutable)
-* `GET /users/all` - Retrieves all users 
+* `GET /users` - Retrieves all users 
 
 ### Games
 
@@ -113,32 +116,13 @@ Swagger (OpenAPI) documentation is accessible via the root URL.
 * `GET /games/{id}` – Retrieve a specific game
 * `PUT /games/{id}` – Update a game (owner only)
 * `DELETE /games/{id}` – Delete a game (owner only)
-* `GET /games` – Search games by name, system, or owner
+* `GET /games/all` – Retrieves all games
 
 ---
 
 ## Ownership Enforcement
 
-Ownership is enforced using a simulated authentication mechanism via request headers.
-
-### Header Format
-
-```
-X-User-Id: <user_id>
-```
-
-Rules enforced:
-
-* Only the owner of a game may update or delete it
-* Users may only update their own profile information
-
-Unauthorized actions return:
-
-```
-403 Forbidden / Game Not Owned
-```
-
----
+Ownership is enforced using a simulated authentication mechanism via basic auth in email and password.
 
 ## HATEOAS (RMM Level 3 Compliance)
 
@@ -171,19 +155,25 @@ The API returns appropriate HTTP status codes and JSON error messages:
 
 ## Academic Integrity & AI Assistance Disclosure
 
-This project was developed by the repository owner. Guidance, architectural advice, and example code patterns were provided with the assistance of **ChatGPT (OpenAI)**. All code was reviewed, adapted, and integrated by the student to ensure understanding and correctness.
+This project was developed by the repository owner.
 
-AI assistance was used primarily for:
+The following components were created or refactored with assistance from ChatGPT (OpenAI) and then reviewed, tested, and integrated by the student:
 
-* REST API architectural planning
-* Flask and SQLAlchemy setup guidance
-* Example CRUD endpoint patterns
-* HATEOAS design examples
-* README documentation structure
+AI-assisted components:
 
-No code was submitted without review and modification by the student.
+* Authentication refactor from X-User-Id headers to HTTP Basic Auth (auth.py)
+* Ownership enforcement logic in:
+* * routes/users.py
+* * routes/games.py
+* * routes/offers.py
+* Offer status validation logic (accepted/rejected only)
+* NGINX reverse proxy and load balancing configuration directions
+* Docker Compose architecture (API + DB + NGINX)
+* PostgreSQL + SQLAlchemy configuration fixes
+* Partial Round-robin testing strategy
+* README structure and documentation improvements
 
----
+All final code and configuration choices were implemented and validated by the student.
 
 ## License
 

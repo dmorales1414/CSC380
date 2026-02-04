@@ -25,3 +25,13 @@ class Game(db.Model):
     previous_owners = db.Column(db.Integer, nullable=True) # Can be null
 
     owner_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+class Offer(db.Model):
+    __tablename__ = "offers"
+    id = db.Column(db.Integer, primary_key=True)
+    offered_game_id = db.Column(db.Integer, nullable=False)
+    requested_game_id = db.Column(db.Integer, nullable=False)
+    from_user_id = db.Column(db.Integer, nullable=False)
+    to_user_id = db.Column(db.Integer, nullable=False)
+    
+    status = db.Column(db.String(20), default="pending")
