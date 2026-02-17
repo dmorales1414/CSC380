@@ -10,6 +10,10 @@ class User(db.Model):
     password = db.Column(db.String(200), nullable=False)
     address = db.Column(db.String(200), nullable=False)
 
+    # SMTP credentials for sending notifications
+    smtp_email = db.Column(db.String(120))
+    smtp_password = db.Column(db.String(120))
+
     games = db.relationship("Game", backref="owner", lazy=True)
 
 
@@ -29,9 +33,12 @@ class Game(db.Model):
 class Offer(db.Model):
     __tablename__ = "offers"
     id = db.Column(db.Integer, primary_key=True)
-    offered_game_id = db.Column(db.Integer, nullable=False)
-    requested_game_id = db.Column(db.Integer, nullable=False)
-    from_user_id = db.Column(db.Integer, nullable=False)
-    to_user_id = db.Column(db.Integer, nullable=False)
+    
+    # Note to self: Next time don't forget to add the foreign key constraints that link together
+    offered_game_id = db.Column(db.Integer, db.ForeignKey("games.id"), nullable=False)
+    requested_game_id = db.Column(db.Integer, db.ForeignKey("games.id"), nullable=False)
+    
+    from_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    to_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     
     status = db.Column(db.String(20), default="pending")

@@ -2,7 +2,9 @@ from flask import Blueprint, request, jsonify
 from db_models import Game, User, Offer
 from database import db
 from werkzeug.security import generate_password_hash
-from auth import get_authenticated_user
+from utils.auth import get_authenticated_user
+from kafka_producer import send_notification
+from utils.hateoas_helper import game_links
 
 # Blueprint for game routes
 bp_games = Blueprint("games", __name__, url_prefix="/games")
@@ -14,7 +16,8 @@ def search_games():
         "id": g.id,
         "name": g.name,
         "system": g.system,
-        "owner_id": g.owner_id
+        "owner_id": g.owner_id,
+        "_links": game_links(g)
     } for g in Game.query.all()])
 
 # Create a new game for a specific user
@@ -28,7 +31,10 @@ def create_game(user_id):
     game = Game(**data, owner_id=user_id)
     db.session.add(game)
     db.session.commit()
-    return jsonify(id=game.id), 201
+    return jsonify({
+        "id": game.id,
+        "_links": game_links(game)
+    }), 201
 
 # Update a specific game
 @bp_games.put("/<int:game_id>")

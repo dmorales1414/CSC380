@@ -1,4 +1,4 @@
-# Uses 3.13 or below slim python image as base to use psycopg2 from requirements.txt
+# Uses 3.12 or below slim python image as base to use psycopg2 from requirements.txt
 # Because of the compatibility issues with psycopg2 and python 3.14+ (does not ship wheels for 3.14+)
 FROM python:3.12-slim
 
@@ -17,10 +17,12 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 # Application Code
+COPY ./email_service/wait_for_kafka.py .
+
 COPY . .
 
 # Exposes the port the API runs on
 EXPOSE 5000
 
 # Run the API
-CMD ["python", "app.py"]
+CMD ["sh", "-c", "python wait_for_kafka.py && python app.py"]

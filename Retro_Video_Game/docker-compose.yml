@@ -1,4 +1,6 @@
-# Notes:
+# NOTE:
+# [AI Citation] AI was used to generate the architecture of these services and the initial Docker Compose configuration. 
+    # The AI was also used to generate the Kafka producer code and to integrate it into the existing Flask application.
 # api1 will fail the first time, but can still be started manually in Docker Desktop
 # Still need to figure out why the first run fails, but otherwise it still works as intended
 services:
@@ -11,7 +13,10 @@ services:
       - DB_URL=postgresql://user:password@db/retro_games
       - SCHEMA_OWNER=true
     depends_on:
-      - db
+      kafka:
+        condition: service_healthy
+      db:
+        condition: service_started
 
   api2:
     build: .
@@ -20,7 +25,10 @@ services:
       - DB_URL=postgresql://user:password@db/retro_games
       - SCHEMA_OWNER=false
     depends_on:
-      - db
+      kafka:
+        condition: service_healthy
+      db:
+        condition: service_started
 
   # Nginx load balancer
   web:
@@ -44,6 +52,35 @@ services:
       POSTGRES_DB: retro_games
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  # Kafka cluster for email notifications
+  kafka:
+    image: bitnamilegacy/kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LOG_DIRS=/tmp/kraft-combined-logs
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  email_service:
+    build: ./email_service
+    depends_on:
+      kafka:
+        condition: service_healthy
+
 
 volumes:
   pgdata:
