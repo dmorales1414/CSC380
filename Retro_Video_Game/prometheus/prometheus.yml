@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Flask APIs
+  - job_name: "retro-api"
+    static_configs:
+      - targets:
+          - "api1:5000"
+          - "api2:5000"
+
+  # Email service (if metrics added)
+  - job_name: "email-service"
+    static_configs:
+      - targets:
+          - "email_service:8000"

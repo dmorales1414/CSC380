@@ -1,8 +1,6 @@
 # NOTE:
 # [AI Citation] AI was used to generate the architecture of these services and the initial Docker Compose configuration. 
     # The AI was also used to generate the Kafka producer code and to integrate it into the existing Flask application.
-# api1 will fail the first time, but can still be started manually in Docker Desktop
-# Still need to figure out why the first run fails, but otherwise it still works as intended
 services:
   # api1 is the schema owner and will initialize the database schema
   # api2 connects to the same database but does not attempt to create the schema
@@ -81,6 +79,15 @@ services:
       kafka:
         condition: service_healthy
 
+  # Prometheus for monitoring
+  # prometheus:
+  #   build: ./prometheus
+  #   container_name: prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   depends_on:
+  #     - api1
+  #     - api2
 
 volumes:
   pgdata:

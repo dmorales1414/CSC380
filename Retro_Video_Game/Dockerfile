@@ -6,7 +6,7 @@ WORKDIR /Retro_Video_Game
 
 # Environment Variables (Wasn't sure how to set these up, so asked ChatGPT for help)
 ENV APP_ENV=production
-ENV DB_HOST=localhost
+ENV DB_HOST=db
 ENV DB_PORT=5000
 ENV DB_NAME=retro_game_api
 

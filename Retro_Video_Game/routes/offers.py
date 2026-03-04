@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from db_models import Game, User, Offer
 from database import db
-from kafka_producer import send_notification
+from utils.events import offer_created_event, offer_status_event
 from utils.auth import get_authenticated_user
 from utils.hateoas_helper import offer_links
 
@@ -30,28 +30,13 @@ def create_offer(user_id):
     sender = User.query.get_or_404(offer.from_user_id)
     receiver = User.query.get_or_404(offer.to_user_id)
 
-    # Notify the recipient of the new offer
-    send_notification(
-        from_email=receiver.smtp_email,
-        from_password=receiver.smtp_password,
-        to_list=[sender.smtp_email],
-        subject="New Offer Received",
-        body=f"Offer ID: {offer.id}\nFrom user: {sender.name}\nTo user: {receiver.name}\nOffered Game ID: {offer.offered_game_id}\nRequested Game ID: {offer.requested_game_id}\nStatus: {offer.status}"
-    )
-
-    # Notify the sender that their offer has been created
-    send_notification(
-        from_email=sender.smtp_email,
-        from_password=sender.smtp_password,
-        to_list=[receiver.smtp_email],
-        subject="Offer Created",
-        body=f"Your offer (ID: {offer.id}) has been sent to {receiver.name}.\nOffered Game ID: {offer.offered_game_id}\nRequested Game ID: {offer.requested_game_id}\nStatus: {offer.status}"
-    )
+    # Notify both the sender and the recipient of the new offer
+    offer_created_event(offer, sender, receiver)
 
     return jsonify({
         "id": offer.id,
         "status": offer.status,
-        "_links": offer_links(offer)
+        "links": offer_links(offer)
     }), 201
 
 # Get all current offers of a specific user
@@ -71,7 +56,7 @@ def my_offers(user_id):
         "status": o.status,
         "from": o.from_user_id,
         "to": o.to_user_id,
-        "_links": offer_links(o)
+        "links": offer_links(o)
     } for o in offers])
 
 # Update the status of a specific offer
@@ -98,28 +83,13 @@ def update_offer(user_id, offer_id):
     sender = User.query.get_or_404(offer.from_user_id)
     recipient = User.query.get_or_404(offer.to_user_id)
 
-    # Notifies the sender that their offer has been accepted or rejected
-    send_notification(
-        from_email=sender.smtp_email,
-        from_password=sender.smtp_password,
-        to_list=[recipient.smtp_email],
-        subject=f"Offer {status.title()} (Sender Notification)",
-        body=f"Offer (ID: {offer.id}) has been {status}\nFrom: {sender.name}\nTo: {recipient.name}"
-    )
-
-    # Notifies the recipient that they have {accepted/rejected} the offer
-    send_notification(
-        from_email=recipient.smtp_email,
-        from_password=recipient.smtp_password,
-        to_list=[sender.smtp_email],
-        subject=f"Offer {status.title()} (Recipient Notification)",
-        body=f"Offer (ID: {offer.id}) has been {status}\nFrom: {recipient.name}\nTo: {sender.name}"
-    )
+    # Notifies both the sender and the recipient that the offer status has been updated
+    offer_status_event(offer, sender, recipient)
 
     return jsonify({
         "id": offer.id,
         "status": offer.status,
         "from": offer.from_user_id,
         "to": offer.to_user_id,
-        "_links": offer_links(offer)
+        "links": offer_links(offer)
     }), 204

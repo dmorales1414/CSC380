@@ -3,7 +3,7 @@ from db_models import User
 from database import db
 from werkzeug.security import generate_password_hash
 from utils.auth import get_authenticated_user
-from kafka_producer import send_notification
+from utils.events import user_created_event, user_password_changed_event, user_profile_updated_event
 from utils.hateoas_helper import game_links, offer_links, user_links
 
 # Blueprint for user routes
@@ -28,19 +28,15 @@ def create_user():
     db.session.add(user)
     db.session.commit()
 
-    send_notification(
-        from_email=user.smtp_email,
-        from_password=user.smtp_password,
-        to_list=[user.email],
-        subject="Welcome to Retro Game Trading Platform",
-        body=f"Hello {user.name}, and welcome to our Retro Game Trading Platform! Your account has been successfully created."
-    )
+    # Notify the user of their account creation
+    user_created_event(user)
+
     return jsonify({
         "id": user.id,
         "name": user.name,
         "email": user.email,
         "address": user.address,
-        "_links": user_links(user)
+        "links": user_links(user)
     }), 201
 
 # Get a specific user's details
@@ -52,7 +48,7 @@ def get_user(user_id):
         "name": user.name,
         "email": user.email,
         "address": user.address,
-        "_links": user_links(user)
+        "links": user_links(user)
     })
 
 # Get all users
@@ -65,7 +61,7 @@ def get_users():
             "name": user.name,
             "email": user.email,
             "address": user.address,
-            "_links": user_links(user)
+            "links": user_links(user)
         }
         for user in users
     ])
@@ -81,13 +77,10 @@ def update_user(user_id):
     user.name = data["name"]
     user.address = data["address"]
     db.session.commit()
-    send_notification(
-        from_email=user.smtp_email,
-        from_password=user.smtp_password,
-        to_list=[user.email],
-        subject="Profile Updated",
-        body=f"Hello {user.name}, your profile details have been updated successfully."
-    )
+
+    # Notify the user of their profile update
+    user_profile_updated_event(user)
+
     return "", 204
 
 @bp_users.patch("/<int:user_id>")
@@ -99,11 +92,8 @@ def update_password(user_id):
     data = request.json
     user.password = generate_password_hash(data["password"])
     db.session.commit()
-    send_notification(
-        from_email=user.smtp_email,
-        from_password=user.smtp_password,
-        to_list=[user.email],
-        subject="Password Changed",
-        body=f"Hello {user.name}, your password has been changed successfully."
-    )
+
+    # Notify the user of their password change
+    user_password_changed_event(user)
+    
     return "", 204

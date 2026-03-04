@@ -59,6 +59,7 @@ Retro_Video_Game/
 │
 ├── utils/
 │   ├── hateoas_helper      # A hateoas helper
+│   ├── events.py           # Contains all email events (or topics)
 │   └── auth.py             # Basic Auth ownership enforcement
 │
 ├── email_service/
