@@ -3,20 +3,32 @@ global:
 
 scrape_configs:
 
-  # Prometheus self-monitoring
+  # Prometheus itself
   - job_name: "prometheus"
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ["prometheus:9090"]
 
   # Flask APIs
   - job_name: "retro-api"
     static_configs:
       - targets:
-          - "api1:5000"
-          - "api2:5000"
+          - api1:5000
+          - api2:5000
 
-  # Email service (if metrics added)
-  - job_name: "email-service"
+  # Nginx exporter
+  - job_name: "nginx"
     static_configs:
       - targets:
-          - "email_service:8000"
+          - nginx-exporter:9113
+
+  # Kafka exporter
+  - job_name: "kafka"
+    static_configs:
+      - targets:
+          - kafka-exporter:9308
+
+  # Postgres exporter
+  - job_name: "postgres"
+    static_configs:
+      - targets:
+          - postgres-exporter:9187

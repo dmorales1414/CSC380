@@ -5,21 +5,17 @@ from routes.users import bp_users
 from routes.games import bp_games
 from routes.offers import bp_offers
 
-# from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST, start_http_server
-# from prometheus_client import make_wsgi_app
-# from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST, start_http_server
+from prometheus_client import make_wsgi_app
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 import os
-# import threading
 
-# REQUEST_COUNT = Counter(
-#     "http_requests_total", 
-#     "Total HTTP requests", 
-#     ["method", "endpoint"]
-# )
-
-# def start_metrics_server():
-#     start_http_server(8000)
+REQUEST_COUNT = Counter(
+    "http_requests_total", 
+    "Total HTTP requests", 
+    ["method", "endpoint"]
+)
 
 def create_app():
     app = Flask(__name__)
@@ -36,20 +32,18 @@ def create_app():
         with app.app_context():
             db.create_all()
 
-
-    # @app.before_request
-    # def before_request():
-    #     if request.path != "/metrics":  # Don't count metrics endpoint
-    #         REQUEST_COUNT.labels(request.method, request.path).inc()
-
     return app
 
 app = create_app()
 
-# Start metrics server in a background thread (runs independently of Flask/restx)
-# metrics_thread = threading.Thread(target=start_metrics_server, daemon=True)
-# metrics_thread.start()
+@app.before_request
+def before_request():
+    if request.path != "/metrics":
+        REQUEST_COUNT.labels(request.method, request.path).inc()
 
+@app.route("/metrics")
+def metrics():
+    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

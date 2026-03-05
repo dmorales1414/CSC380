@@ -15,6 +15,8 @@ services:
         condition: service_healthy
       db:
         condition: service_started
+    networks:
+      - backend
 
   api2:
     build: .
@@ -27,6 +29,8 @@ services:
         condition: service_healthy
       db:
         condition: service_started
+    networks:
+      - backend
 
   # Nginx load balancer
   web:
@@ -39,6 +43,8 @@ services:
     depends_on:
       - api1
       - api2
+    networks:
+      - backend
 
   # PostgreSQL Database
   db:
@@ -50,6 +56,8 @@ services:
       POSTGRES_DB: retro_games
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
 
   # Kafka cluster for email notifications
   kafka:
@@ -72,22 +80,74 @@ services:
       interval: 10s
       timeout: 5s
       retries: 20
+    
+    networks:
+      - backend
 
   email_service:
     build: ./email_service
     depends_on:
       kafka:
         condition: service_healthy
+    networks:
+      - backend
 
   # Prometheus for monitoring
-  # prometheus:
-  #   build: ./prometheus
-  #   container_name: prometheus
-  #   ports:
-  #     - "9090:9090"
-  #   depends_on:
-  #     - api1
-  #     - api2
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - api1
+      - api2
+    networks:
+      - backend
+
+  # Grafana for easier visualization of monitoring data
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - backend
+
+# EXPORTERS
+  kafka-exporter:
+    image: danielqsj/kafka-exporter
+    command:
+      - "--kafka.server=kafka:9092"
+    ports:
+      - "9308:9308"
+    networks:
+      - backend
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://user:password@db:5432/retro_games?sslmode=disable"
+    ports:
+      - "9187:9187"
+    networks:
+      - backend
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter
+    command:
+      - -nginx.scrape-uri=http://nginx_lb/nginx_status
+    ports:
+      - "9113:9113"
+    networks:
+      - backend
 
 volumes:
   pgdata:
+
+networks:
+  backend:
+    driver: bridge
