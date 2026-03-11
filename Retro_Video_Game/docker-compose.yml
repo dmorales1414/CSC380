@@ -145,6 +145,27 @@ services:
     networks:
       - backend
 
+  redis-exporter:
+    image: oliver006/redis_exporter
+    command:
+      - "--redis.addr=redis:6379"
+    ports:
+      - "9121:9121"
+    networks:
+      - backend
+
+# Redis for caching
+  redis:
+    image: redis:7
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    depends_on:
+      - api1
+      - api2
+    networks:
+      - backend
+
 volumes:
   pgdata:
 

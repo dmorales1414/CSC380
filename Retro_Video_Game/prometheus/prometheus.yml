@@ -32,3 +32,19 @@ scrape_configs:
     static_configs:
       - targets:
           - postgres-exporter:9187
+
+  - job_name: "redis"
+    static_configs:
+      - targets:
+          - redis-exporter:9121
+
+
+# GRAFANA DASHBOARD QUERIES (for reference):
+
+# API Request Rate - sum(rate(http_requests_total[1m])) by (endpoint)
+
+# Kafka Topic Activity - sum(kafka_topic_partition_current_offset) by (topic)
+
+# Nginx Request Rate - rate(nginx_http_requests_total[1m])
+
+# PostgreSQL Active Connections - pg_stat_database_numbackends

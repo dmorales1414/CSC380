@@ -1,9 +1,10 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from db_models import Game, User, Offer
 from database import db
 from utils.events import offer_created_event, offer_status_event
 from utils.auth import get_authenticated_user
 from utils.hateoas_helper import offer_links
+import json
 
 # Blueprint for offer routes
 bp_offers = Blueprint("offers", __name__, url_prefix="/offers")
@@ -11,6 +12,8 @@ bp_offers = Blueprint("offers", __name__, url_prefix="/offers")
 # Create a new offer
 @bp_offers.post("/users/<int:user_id>")
 def create_offer(user_id):
+    offer_redis_client = current_app.redis_client
+
     user = get_authenticated_user()
     if not user or user.id != user_id:
         return {"error": "Unauthorized Access"}, 401
@@ -27,6 +30,10 @@ def create_offer(user_id):
     db.session.add(offer)
     db.session.commit()
 
+    # Clear cached offers for both the sender and the recipient
+    offer_redis_client.delete(f"user_offers_{user_id}")
+    offer_redis_client.delete(f"user_offers_{data['to_user_id']}")
+
     sender = User.query.get_or_404(offer.from_user_id)
     receiver = User.query.get_or_404(offer.to_user_id)
 
@@ -42,6 +49,19 @@ def create_offer(user_id):
 # Get all current offers of a specific user
 @bp_offers.get("/users/<int:user_id>")
 def my_offers(user_id):
+    # Caches the offers for 1 minute (60 seconds)
+    offer_redis_client = current_app.redis_client
+    cache_key = f"user_offers_{user_id}"
+
+    cached = offer_redis_client.get(cache_key)
+
+    # If the offers are cached, return the cached version instead of querying the database
+    if cached:
+        print(f"CACHE HIT: offers")
+        return jsonify(json.loads(cached))
+
+    print(f"CACHE MISS: offers")
+
     user = get_authenticated_user()
     if not user or user.id != user_id:
         return {"error": "Unauthorized Access"}, 401
@@ -51,18 +71,25 @@ def my_offers(user_id):
         (Offer.to_user_id == user.id)
     )
 
-    return jsonify([{
+    offer_results = [{
         "id": o.id,
         "status": o.status,
         "from": o.from_user_id,
         "to": o.to_user_id,
         "links": offer_links(o)
-    } for o in offers])
+    } for o in offers]
+
+    offer_redis_client.setex(cache_key, 60, json.dumps(offer_results))
+
+    return jsonify(offer_results)
+
 
 # Update the status of a specific offer
 # Example: { "status": "accepted" }
 @bp_offers.put("/users/<int:user_id>/<int:offer_id>")
 def update_offer(user_id, offer_id):
+    offer_redis_client = current_app.redis_client
+
     user = get_authenticated_user()
     if not user or user.id != user_id:
         return {"error": "Unauthorized Access"}, 401
@@ -79,6 +106,10 @@ def update_offer(user_id, offer_id):
 
     offer.status = status
     db.session.commit()
+
+    # Update cached offers for the user and recupient
+    offer_redis_client.delete(f"user_offers_{user_id}")
+    offer_redis_client.delete(f"user_offers_{offer.to_user_id}")
 
     sender = User.query.get_or_404(offer.from_user_id)
     recipient = User.query.get_or_404(offer.to_user_id)
